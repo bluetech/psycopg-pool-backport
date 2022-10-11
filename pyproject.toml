@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=49.2.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "error",
+]
+testpaths=[
+    "tests",
+]
+# Note: On Travis they these options seem to leak objects
+# log_format = "%(asctime)s.%(msecs)03d %(levelname)-8s %(name)s:%(filename)s:%(lineno)d %(message)s"
+# log_level = "DEBUG"
+
+[tool.coverage.run]
+source = [
+    "psycopg2_pool",
+]
+[tool.coverage.report]
+exclude_lines = [
+    "if TYPE_CHECKING:",
+    '\.\.\.$',
+]
+
+[tool.mypy]
+files = [
+    "psycopg2_pool",
+    "tests",
+]
+warn_unused_ignores = true
+show_error_codes = true
+strict = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+check_untyped_defs = true
+disallow_untyped_defs = false
+disallow_untyped_calls = false

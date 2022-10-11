@@ -1,0 +1,18 @@
+*.egg-info/
+.tox
+*.pstats
+*.swp
+.mypy_cache
+__pycache__/
+*.html
+.vscode
+.venv
+.coverage
+htmlcov
+
+.eggs/
+dist/
+wheelhouse/
+# Spelling these explicitly because we have /scripts/build/ to not ignore
+# but I still want 'ag' to avoid looking here.
+/build/

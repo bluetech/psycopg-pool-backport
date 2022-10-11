@@ -1,0 +1,22 @@
+# This is a constraint file forcing the minimum allowed version to be
+# installed.
+#
+# https://pip.pypa.io/en/stable/user_guide/#constraints-files
+
+# From install_requires
+psycopg2 == 2.9.4
+
+# From the 'test' extra
+mypy == 0.981
+types-psycopg2 == 2.9.21.1
+pproxy == 2.7.0
+pytest == 6.2.5
+pytest-cov == 3.0.0
+pytest-randomly == 3.10.0
+
+# From the 'dev' extra
+black == 22.3.0
+flake8 == 4.0.0
+mypy == 0.981
+types-setuptools == 57.4.0
+wheel == 0.37

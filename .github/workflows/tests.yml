@@ -1,0 +1,183 @@
+name: Tests
+
+on:
+  push:
+    # This should disable running the workflow on tags, according to the
+    # on.<push|pull_request>.<branches|tags> GitHub Actions docs.
+    branches:
+      - "*"
+  pull_request:
+
+concurrency:
+  # Cancel older requests of the same workflow in the same branch.
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+
+  linux:  # {{{
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Test different combinations of Python, Postgres, libpq.
+          - {python: "3.7", postgres: "postgres:10", libpq: "newest"}
+          - {python: "3.8", postgres: "postgres:12", libpq: ""}
+          - {python: "3.9", postgres: "postgres:13", libpq: "newest"}
+          - {python: "3.10", postgres: "postgres:14", libpq: "oldest"}
+          - {python: "3.7", postgres: "postgres:14", libpq: "oldest"}
+          - {python: "3.8", postgres: "postgres:13", libpq: "newest"}
+          - {python: "3.9", postgres: "postgres:12", libpq: ""}
+          - {python: "3.10", postgres: "postgres:10", libpq: "oldest"}
+          - {python: "3.9", postgres: "postgres:14", libpq: ""}
+
+    env:
+      PSYCOPG_TEST_DSN: "host=127.0.0.1 user=postgres"
+      PGPASSWORD: password
+      PYTEST_ADDOPTS: --color yes
+      # Enable to run tests using the minimum version of dependencies.
+      # PIP_CONSTRAINT: ${{ github.workspace }}/tests/constraints.txt
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install the newest libpq version available
+        if: ${{ matrix.libpq == 'newest' }}
+        run: |
+          set -x
+          rel=$(lsb_release -c -s)
+          echo "deb http://apt.postgresql.org/pub/repos/apt ${rel}-pgdg main" \
+            | sudo tee -a /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get -qq update
+          pqver=$(apt-cache show libpq5  | grep ^Version: | head -1 \
+            | awk '{print $2}')
+          sudo apt-get -qq -y install "libpq-dev=${pqver}" "libpq5=${pqver}"
+
+      - name: Install the oldest libpq version available
+        if: ${{ matrix.libpq == 'oldest' }}
+        run: |
+          set -x
+          pqver=$(apt-cache show libpq5  | grep ^Version: | tail -1 \
+            | awk '{print $2}')
+          sudo apt-get -qq -y --allow-downgrades install \
+            "libpq-dev=${pqver}" "libpq5=${pqver}"
+
+      - name: Install tox
+        run: pip install tox wheel
+
+      - name: Run tests (Python implementation)
+        run: tox -e ${{ matrix.python }}
+
+    services:
+      postgresql:
+        image: ${{ matrix.postgres }}
+        env:
+          POSTGRES_PASSWORD: password
+        ports:
+          - 5432:5432
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+
+  # }}}
+
+  macos:  # {{{
+    runs-on: macos-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {python: "3.7"}
+          - {python: "3.8"}
+          - {python: "3.9"}
+          - {python: "3.10"}
+          - {python: "3.7"}
+          - {python: "3.8"}
+          - {python: "3.9"}
+          - {python: "3.10"}
+
+    env:
+      PSYCOPG_TEST_DSN: "host=127.0.0.1 user=runner dbname=postgres"
+      # MacOS on GitHub Actions seems particularly slow.
+      # Don't run timing-based tests as they regularly fail.
+      # pproxy-based tests fail too, with the proxy not coming up in 2s.
+      PYTEST_ADDOPTS: -m 'not timing and not proxy and not mypy' --color yes
+      # PIP_CONSTRAINT: ${{ github.workspace }}/tests/constraints.txt
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install PostgreSQL on the runner
+        run: brew install postgresql@14
+
+      - name: Start PostgreSQL service for test
+        run: brew services start postgresql
+
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install tox
+        run: pip install tox wheel
+
+      - name: Run tests
+        run: tox -e ${{ matrix.python }}
+
+
+  # }}}
+
+  windows:  # {{{
+    runs-on: windows-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {python: "3.7"}
+          - {python: "3.8"}
+          - {python: "3.9"}
+          - {python: "3.10"}
+          - {python: "3.7"}
+          - {python: "3.8"}
+          - {python: "3.9"}
+          - {python: "3.10"}
+
+    env:
+      PSYCOPG_IMPL: ${{ matrix.impl }}
+      PSYCOPG_TEST_DSN: "host=127.0.0.1 dbname=postgres"
+      # On windows pproxy doesn't seem very happy. Also a few timing test fail.
+      PYTEST_ADDOPTS: -m 'not timing and not proxy and not mypy' --color yes
+      # PIP_CONSTRAINT: ${{ github.workspace }}/tests/constraints.txt
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Start PostgreSQL service for test
+        run: |
+          $PgSvc = Get-Service "postgresql*"
+          Set-Service $PgSvc.Name -StartupType manual
+          $PgSvc.Start()
+
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install tox
+        run: pip install tox wheel
+
+      - name: Run tests
+        run: tox -e ${{ matrix.python }}
+
+
+  # }}}
