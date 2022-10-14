@@ -3,11 +3,9 @@
 #
 # https://pip.pypa.io/en/stable/user_guide/#constraints-files
 
-# From install_requires
-psycopg2 == 2.9.4
-
 # From the 'test' extra
 mypy == 0.981
+psycopg2 == 2.9.4
 types-psycopg2 == 2.9.21.1
 pproxy == 2.7.0
 pytest == 6.2.5
