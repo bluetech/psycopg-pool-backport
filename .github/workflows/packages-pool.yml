@@ -2,8 +2,6 @@ name: Build pool packages
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '28 6 * * sun'
 
 jobs:
 
@@ -14,8 +12,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {package: psycopg2_pool, format: sdist}
-          - {package: psycopg2_pool, format: wheel}
+          - {format: sdist}
+          - {format: wheel}
 
     steps:
       - uses: actions/checkout@v2
@@ -26,13 +24,13 @@ jobs:
 
       - name: Create the sdist packages
         run: |-
-          python ${{ matrix.package }}/setup.py sdist -d `pwd`/dist/
+          python setup.py sdist -d `pwd`/dist/
         if: ${{ matrix.format == 'sdist' }}
 
       - name: Create the wheel packages
         run: |-
           pip install wheel
-          python ${{ matrix.package }}/setup.py bdist_wheel -d `pwd`/dist/
+          python setup.py bdist_wheel -d `pwd`/dist/
         if: ${{ matrix.format == 'wheel' }}
 
       - name: Install the Python pool package and test requirements
